@@ -26,6 +26,21 @@ class BoardTests(unittest.TestCase):
         self.assertEqual(score, 24)
         self.assertEqual(indices, [0, 1])
 
+    def test_set_grid_rejects_invalid_tiles(self) -> None:
+        with self.assertRaises(ValueError):
+            self.board.set_grid(
+                [
+                    [2, 3, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                    [0, 0, 0, 0],
+                ]
+            )
+
+    def test_merge_line_rejects_oversized_input(self) -> None:
+        with self.assertRaises(ValueError):
+            self.board.merge_line([2, 2, 2, 2, 2])
+
     def test_move_left(self) -> None:
         self.board.set_grid(
             [

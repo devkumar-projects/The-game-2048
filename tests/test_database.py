@@ -50,6 +50,21 @@ class DatabaseTests(unittest.TestCase):
         self.assertEqual(restored.grid[0], (2, 4, 0, 0))
         self.assertEqual(restored.grid[3][3], 64)
 
+    def test_invalid_saved_grid_is_discarded(self) -> None:
+        player = self.database.get_or_create_player("Katherine", "Johnson", "MATH")
+        self.database.save_game_state(
+            player.id,
+            [[2, 4, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]],
+            740,
+            False,
+        )
+        with self.database._connect() as connection:
+            connection.execute(
+                "UPDATE saved_games SET grid_json = ? WHERE player_id = ?",
+                ("[[2,3,0,0]]", player.id),
+            )
+        self.assertIsNone(self.database.load_game_state(player.id))
+
     def test_clear_saved_game(self) -> None:
         player = self.database.get_or_create_player("Dorothy", "Vaughan", "CS")
         self.database.save_game_state(

@@ -52,10 +52,22 @@ class Board:
         self.spawn_random_tile()
         self.spawn_random_tile()
 
+    @staticmethod
+    def _is_valid_tile(value: int) -> bool:
+        """Return whether a tile is empty or a positive power of two."""
+        return value >= 0 and (value == 0 or (value & (value - 1)) == 0)
+
     def set_grid(self, rows: Sequence[Sequence[int]]) -> None:
         if len(rows) != self.size or any(len(row) != self.size for row in rows):
             raise ValueError(f"Grid must be {self.size}x{self.size}.")
-        self.grid = [list(map(int, row)) for row in rows]
+        grid = [list(map(int, row)) for row in rows]
+        if any(
+            not self._is_valid_tile(value)
+            for row in grid
+            for value in row
+        ):
+            raise ValueError("Grid tiles must be zero or positive powers of two.")
+        self.grid = grid
         self.won = any(
             value >= WINNING_TILE for row in self.grid for value in row
         )
@@ -102,7 +114,12 @@ class Board:
         return [values[0]] + tail, tail_score, shifted_indices
 
     def merge_line(self, line: Iterable[int]) -> tuple[list[int], int, list[int]]:
-        compressed = [value for value in line if value != 0]
+        values = list(line)
+        if len(values) > self.size:
+            raise ValueError(f"Line cannot contain more than {self.size} tiles.")
+        if any(not self._is_valid_tile(int(value)) for value in values):
+            raise ValueError("Line tiles must be zero or positive powers of two.")
+        compressed = [int(value) for value in values if value != 0]
         merged, score_gained, merged_indices = self._recursive_merge(compressed)
         merged.extend([0] * (self.size - len(merged)))
         return merged, score_gained, merged_indices

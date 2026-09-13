@@ -6,6 +6,8 @@ import json
 import sqlite3
 from typing import Sequence
 
+from .constants import BOARD_SIZE
+
 
 @dataclass(frozen=True)
 class Player:
@@ -125,6 +127,28 @@ class ScoreDatabase:
             raise ValueError("Unknown player.")
         return int(row["best_score"])
 
+    @staticmethod
+    def _normalise_grid(grid: Sequence[Sequence[int]]) -> tuple[tuple[int, ...], ...]:
+        try:
+            normalised = tuple(
+                tuple(int(value) for value in row)
+                for row in grid
+            )
+        except (TypeError, ValueError):
+            raise ValueError("Saved grid must contain integer tiles.") from None
+
+        if len(normalised) != BOARD_SIZE or any(
+            len(row) != BOARD_SIZE for row in normalised
+        ):
+            raise ValueError(f"Saved grid must be {BOARD_SIZE}x{BOARD_SIZE}.")
+        if any(
+            value < 0 or (value != 0 and (value & (value - 1)) != 0)
+            for row in normalised
+            for value in row
+        ):
+            raise ValueError("Saved grid tiles must be zero or powers of two.")
+        return normalised
+
     def save_game_state(
         self,
         player_id: int,
@@ -132,8 +156,9 @@ class ScoreDatabase:
         score: int,
         won: bool,
     ) -> None:
+        normalised_grid = self._normalise_grid(grid)
         grid_json = json.dumps(
-            [[int(value) for value in row] for row in grid],
+            [list(row) for row in normalised_grid],
             separators=(",", ":"),
         )
         score = max(0, int(score))
@@ -177,10 +202,7 @@ class ScoreDatabase:
 
         try:
             decoded = json.loads(str(row["grid_json"]))
-            grid = tuple(
-                tuple(int(value) for value in grid_row)
-                for grid_row in decoded
-            )
+            grid = self._normalise_grid(decoded)
         except (TypeError, ValueError, json.JSONDecodeError):
             self.clear_game_state(player_id)
             return None
